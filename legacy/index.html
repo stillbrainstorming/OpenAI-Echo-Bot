@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Legacy Echo Bot</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      :root {
+        --primary-color: #6366f1;
+        --secondary-color: #4f46e5;
+        --user-msg-color: #6366f1;
+        --bot-msg-color: #374151;
+        --bg-color: #111827;
+        --chat-bg: #1f2937;
+        --input-bg: #374151;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --border-radius: 12px;
+        --spacing: 16px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: inherit;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        padding: var(--spacing);
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing);
+        height: 100%;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+      }
+      .title {
+        font-weight: 700;
+        font-size: 1.5rem;
+      }
+      .back-btn {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: 0.2s ease;
+      }
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      #chat {
+        flex: 1;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        padding: var(--spacing);
+        overflow: auto;
+        background: var(--chat-bg);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .msg {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .user {
+        flex-direction: row-reverse;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        flex-shrink: 0;
+        font-size: 14px;
+        color: white;
+      }
+      .user .avatar {
+        background: var(--user-msg-color);
+      }
+      .bot .avatar {
+        background: var(--bot-msg-color);
+      }
+      .bubble {
+        padding: 12px 16px;
+        border-radius: 16px;
+        max-width: 70%;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .user .bubble {
+        background: var(--user-msg-color);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+      .bot .bubble {
+        background: var(--bot-msg-color);
+        color: var(--text-primary);
+        border-bottom-left-radius: 4px;
+      }
+      .typing-indicator {
+        display: none;
+        padding: 12px 16px;
+        background: var(--bot-msg-color);
+        border-radius: 18px;
+        max-width: 80px;
+      }
+      .typing-indicator span {
+        height: 8px;
+        width: 8px;
+        float: left;
+        margin: 0 2px;
+        background-color: var(--text-secondary);
+        border-radius: 50%;
+        opacity: 0.4;
+      }
+      .typing-indicator span:nth-of-type(1) {
+        animation: typing 1s infinite;
+      }
+      .typing-indicator span:nth-of-type(2) {
+        animation: typing 1s 0.33s infinite;
+      }
+      .typing-indicator span:nth-of-type(3) {
+        animation: typing 1s 0.66s infinite;
+      }
+      @keyframes typing {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+          opacity: 1;
+        }
+      }
+      form {
+        display: flex;
+        gap: 12px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 16px;
+        font-size: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        outline: none;
+      }
+      input[type="text"]:focus {
+        border-color: var(--primary-color);
+      }
+      button {
+        padding: 0 24px;
+        font-size: 1rem;
+        border-radius: var(--border-radius);
+        border: 0;
+        background: var(--primary-color);
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button:hover {
+        background: var(--secondary-color);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .debug-container {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--border-radius);
+        padding: 16px;
+      }
+      .debug-container pre {
+        font-size: 0.85rem;
+        color: #a78bfa;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 100px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="header-left">
+          <div class="logo"><i class="fas fa-robot"></i></div>
+          <h1 class="title">Legacy Echo Bot</h1>
+        </div>
+        <a href="../index.html" class="back-btn"
+          ><i class="fas fa-arrow-left"></i> Back to Modern App</a
+        >
+      </div>
+
+      <div id="chat" role="log">
+        <div class="msg bot">
+          <div class="avatar"><i class="fas fa-robot"></i></div>
+          <div class="bubble">Hi! I'm the legacy Echo Bot.</div>
+        </div>
+        <div class="typing-indicator" id="typing">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <form id="form">
+        <input
+          id="input"
+          type="text"
+          placeholder="Type a message..."
+          required
+        />
+        <button type="submit" id="send-btn">
+          <span>Send</span> <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+
+      <div class="debug-container">
+        <strong>Debug Console</strong>
+        <pre id="debug">Ready.</pre>
+      </div>
+    </div>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send-btn");
+      const typingIndicator = document.getElementById("typing");
+      const debugEl = document.getElementById("debug");
+
+      function logDebug(message) {
+        debugEl.textContent =
+          typeof message === "object"
+            ? JSON.stringify(message, null, 2)
+            : message;
+      }
+
+      function appendMessage(isBot, text) {
+        const el = document.createElement("div");
+        el.className = "msg " + (isBot ? "bot" : "user");
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.innerHTML = isBot
+          ? '<i class="fas fa-robot"></i>'
+          : '<i class="fas fa-user"></i>';
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+
+        el.appendChild(avatar);
+        el.appendChild(bubble);
+        chat.insertBefore(el, typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      async function sendToMockApi(message) {
+        appendMessage(false, message);
+        input.disabled = true;
+        sendBtn.disabled = true;
+
+        typingIndicator.style.display = "flex";
+        chat.scrollTop = chat.scrollHeight;
+
+        const MOCK_API_URL = "https://jsonplaceholder.typicode.com/posts";
+        logDebug(`Sending POST to ${MOCK_API_URL}`);
+
+        try {
+          const res = await fetch(MOCK_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          });
+
+          const parsed = await res.json();
+          logDebug(parsed);
+
+          setTimeout(() => {
+            typingIndicator.style.display = "none";
+            if (parsed && parsed.message) {
+              appendMessage(true, parsed.message);
+            } else {
+              appendMessage(true, `Error: Did not receive echo.`);
+            }
+          }, 600);
+        } catch (err) {
+          logDebug(`Error: ${err.message}`);
+          typingIndicator.style.display = "none";
+          appendMessage(true, `Failed to reach mock API.`);
+        } finally {
+          input.disabled = false;
+          sendBtn.disabled = false;
+          input.focus();
+        }
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const v = input.value.trim();
+        if (v) {
+          input.value = "";
+          sendToMockApi(v);
+        }
+      });
+
+      input.focus();
+    </script>
+  </body>
+</html>

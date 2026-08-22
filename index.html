@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Anthropic Chat</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      :root {
+        --primary-color: #4a6fff;
+        --secondary-color: #8c68cd;
+        --user-msg-color: #4a6fff;
+        --bot-msg-color: #5e5e8d;
+        --bg-gradient: #0f172a;
+        --chat-bg: #1e293b;
+        --input-bg: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #64748b;
+        --success-color: #10b981;
+        --error-color: #ef4444;
+        --border-radius: 16px;
+        --border-radius-sm: 8px;
+        --spacing: 16px;
+        --transition: all 0.3s ease;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          Roboto,
+          Arial,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        margin: 0;
+        background: var(--bg-gradient);
+        color: var(--text-primary);
+        line-height: 1.6;
+        padding: var(--spacing);
+        position: relative;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing);
+        height: 100%;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+      }
+      .title {
+        font-weight: 700;
+        font-size: 1.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .api-key-container {
+        width: 100%;
+      }
+      input[type="password"] {
+        width: 100%;
+        padding: 16px;
+        font-size: 1rem;
+        border: 1px solid #334155;
+        border-radius: var(--border-radius);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: var(--transition);
+      }
+      input[type="password"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(74, 111, 255, 0.2);
+      }
+      .collapsible-container {
+        background: #1e293b;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        border: 1px solid #334155;
+        transition: var(--transition);
+        flex-shrink: 0;
+      }
+      .collapsible-header {
+        padding: 12px 16px;
+        background: #334155;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+      }
+      .collapsible-header:hover {
+        background: #475569;
+      }
+      .collapsible-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .collapsible-content {
+        max-height: 200px;
+        overflow: auto;
+        transition: max-height 0.3s ease;
+      }
+      .collapsed .collapsible-content {
+        max-height: 0;
+        overflow: hidden;
+      }
+      #system-prompt {
+        width: 100%;
+        padding: 16px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        background: transparent;
+        color: var(--text-primary);
+        border: none;
+        resize: none;
+        display: block;
+      }
+      #system-prompt:focus {
+        outline: none;
+      }
+      #chat {
+        flex: 1;
+        min-height: 200px;
+        border: 1px solid #334155;
+        border-radius: var(--border-radius);
+        padding: var(--spacing);
+        overflow: auto;
+        background: var(--chat-bg);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      .msg {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        animation: fadeIn 0.3s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .user {
+        flex-direction: row-reverse;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+      .user .avatar {
+        background: linear-gradient(135deg, var(--user-msg-color), #3b57c7);
+        color: white;
+      }
+      .bot .avatar,
+      .error-msg .avatar {
+        background: linear-gradient(135deg, var(--bot-msg-color), #4a4a75);
+        color: white;
+      }
+      .bubble {
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 70%;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        position: relative;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .user .bubble {
+        background: linear-gradient(135deg, var(--user-msg-color), #3b57c7);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+      .bot .bubble {
+        background: #334155;
+        color: var(--text-primary);
+        border: 1px solid #334155;
+        border-bottom-left-radius: 4px;
+      }
+      .error-msg .bubble {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--text-primary);
+        border: 1px solid var(--error-color);
+        border-bottom-left-radius: 4px;
+      }
+      .typing-indicator {
+        display: none;
+        padding: 12px 16px;
+        background: #334155;
+        border-radius: 18px;
+        border-bottom-left-radius: 4px;
+        max-width: 100px;
+        margin-bottom: 8px;
+      }
+      .typing-indicator span {
+        height: 8px;
+        width: 8px;
+        float: left;
+        margin: 0 1px;
+        background-color: var(--text-secondary);
+        display: block;
+        border-radius: 50%;
+        opacity: 0.4;
+      }
+      .typing-indicator span:nth-of-type(1) {
+        animation: typing 1s infinite;
+      }
+      .typing-indicator span:nth-of-type(2) {
+        animation: typing 1s 0.33s infinite;
+      }
+      .typing-indicator span:nth-of-type(3) {
+        animation: typing 1s 0.66s infinite;
+      }
+      @keyframes typing {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+          opacity: 1;
+        }
+      }
+      form {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .input-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .input-wrapper {
+        position: relative;
+        width: 100%;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 16px 52px 16px 16px;
+        font-size: 1rem;
+        border: 1px solid #334155;
+        border-radius: var(--border-radius);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        transition: var(--transition);
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(74, 111, 255, 0.2);
+      }
+      .input-icon {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+      }
+      .char-counter {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-align: right;
+        padding-right: 8px;
+      }
+      .button-group {
+        display: flex;
+        gap: 8px;
+      }
+      button {
+        padding: 16px 20px;
+        font-size: 1rem;
+        border-radius: var(--border-radius);
+        border: 0;
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(74, 111, 255, 0.3);
+      }
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .secondary-btn {
+        background: #334155;
+        border: 1px solid #334155;
+      }
+      .secondary-btn:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.5);
+        box-shadow: none;
+      }
+      pre {
+        background: #0f172a;
+        color: var(--text-primary);
+        padding: 16px;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+        overflow: auto;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      @media (max-width: 600px) {
+        :root {
+          --spacing: 12px;
+        }
+        body {
+          padding: 12px;
+        }
+        .header {
+          padding: 8px 0;
+        }
+        .title {
+          font-size: 1.25rem;
+        }
+        .bubble {
+          max-width: 85%;
+        }
+        form {
+          flex-direction: column;
+        }
+        .button-group {
+          width: 100%;
+          display: flex;
+        }
+        .button-group button {
+          flex: 1;
+          justify-content: center;
+        }
+      }
+      @media (max-width: 375px) {
+        .button-group {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header" style="justify-content: space-between">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div class="logo">
+            <i class="fas fa-comment"></i>
+          </div>
+          <h1 class="title">Open AI Chat</h1>
+        </div>
+        <a
+          href="legacy/index.html"
+          style="
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #1e293b;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid #334155;
+            transition: var(--transition);
+          "
+          onmouseover="this.style.background = '#334155'"
+          onmouseout="this.style.background = '#1e293b'"
+        >
+          <i class="fas fa-history"></i> Legacy
+        </a>
+      </div>
+      <div class="collapsible-container collapsed" id="system-container">
+        <div class="collapsible-header" id="system-header">
+          <div class="collapsible-title">
+            <i class="fas fa-cog"></i>
+            <span>System Prompt</span>
+          </div>
+          <i class="fas fa-chevron-down" id="system-toggle"></i>
+        </div>
+        <div class="collapsible-content">
+          <textarea
+            id="system-prompt"
+            rows="3"
+            placeholder="System prompt..."
+          ></textarea>
+        </div>
+      </div>
+      <div id="chat" role="log" aria-live="polite">
+        <div class="msg bot initial-greeting">
+          <div class="avatar">B</div>
+          <div class="bubble">Hi! I am ready to chat.</div>
+        </div>
+        <div class="typing-indicator" id="typing">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <form id="form" autocomplete="off">
+        <div class="input-group">
+          <div class="input-wrapper">
+            <input id="input" type="text" placeholder="Type a message..." />
+            <div class="input-icon">
+              <i class="fas fa-keyboard"></i>
+            </div>
+          </div>
+          <div class="char-counter" id="char-counter">0 / 2000</div>
+        </div>
+        <div class="button-group">
+          <button type="submit" id="send-btn" disabled>
+            <i class="fas fa-paper-plane"></i>
+            <span>Send</span>
+          </button>
+          <button type="button" id="clear-btn" class="secondary-btn">
+            <i class="fas fa-trash"></i>
+            <span>Clear</span>
+          </button>
+        </div>
+      </form>
+      <div class="collapsible-container" id="debug-container">
+        <div class="collapsible-header" id="debug-header">
+          <div class="collapsible-title">
+            <i class="fas fa-terminal"></i>
+            <span>Debug output</span>
+          </div>
+          <i class="fas fa-chevron-up" id="debug-toggle"></i>
+        </div>
+        <div class="collapsible-content">
+          <pre id="debug">Ready.</pre>
+        </div>
+      </div>
+    </div>
+    <script>
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const systemPrompt = document.getElementById("system-prompt");
+      const charCounter = document.getElementById("char-counter");
+      const sendBtn = document.getElementById("send-btn");
+      const clearBtn = document.getElementById("clear-btn");
+      const typingIndicator = document.getElementById("typing");
+      const debugEl = document.getElementById("debug");
+      const debugContainer = document.getElementById("debug-container");
+      const debugHeader = document.getElementById("debug-header");
+      const debugToggle = document.getElementById("debug-toggle");
+      const systemContainer = document.getElementById("system-container");
+      const systemHeader = document.getElementById("system-header");
+      const systemToggle = document.getElementById("system-toggle");
+      let conversationHistory = [];
+
+      debugHeader.addEventListener("click", () => {
+        debugContainer.classList.toggle("collapsed");
+        debugToggle.classList.toggle("fa-chevron-down");
+        debugToggle.classList.toggle("fa-chevron-up");
+      });
+      systemHeader.addEventListener("click", () => {
+        systemContainer.classList.toggle("collapsed");
+        systemToggle.classList.toggle("fa-chevron-down");
+        systemToggle.classList.toggle("fa-chevron-up");
+      });
+      function logDebug(...args) {
+        console.log(...args);
+        const line = args
+          .map((a) =>
+            typeof a === "object" ? JSON.stringify(a, null, 2) : String(a),
+          )
+          .join(" ");
+        debugEl.textContent = debugEl.textContent
+          ? debugEl.textContent + "\n\n" + line
+          : line;
+      }
+      function appendMessage(who, text) {
+        const isBot = who === "bot";
+        const el = document.createElement("div");
+        el.className = "msg " + (isBot ? "bot" : "user");
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = isBot ? "B" : "Y";
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+        el.appendChild(avatar);
+        el.appendChild(bubble);
+        chat.insertBefore(el, typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+        return el;
+      }
+      function appendErrorBubble(text) {
+        const el = document.createElement("div");
+        el.className = "msg error-msg";
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = "E";
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+        el.appendChild(avatar);
+        el.appendChild(bubble);
+        chat.insertBefore(el, typingIndicator);
+        chat.scrollTop = chat.scrollHeight;
+      }
+      input.addEventListener("input", () => {
+        const len = input.value.length;
+        charCounter.textContent = len + " / 2000";
+        sendBtn.disabled = len === 0 || len > 2000;
+      });
+      clearBtn.addEventListener("click", () => {
+        const msgs = document.querySelectorAll(".msg:not(.initial-greeting)");
+        msgs.forEach((m) => m.remove());
+        conversationHistory = [];
+        logDebug("Cleared context");
+      });
+      async function sendToAI(message) {
+        appendMessage("user", message);
+        conversationHistory.push({ role: "user", content: message });
+        input.disabled = true;
+        sendBtn.disabled = true;
+        clearBtn.disabled = true;
+        typingIndicator.style.display = "flex";
+        chat.scrollTop = chat.scrollHeight;
+
+        const payload = {
+          model: "openai",
+          messages: [],
+          stream: true,
+        };
+
+        const sysVal = systemPrompt.value.trim();
+        if (sysVal) {
+          payload.messages.push({ role: "system", content: sysVal });
+        }
+
+        payload.messages.push(...conversationHistory);
+
+        const fetchOptions = {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        };
+
+        logDebug("Request payload:", fetchOptions);
+        try {
+          const res = await fetch(
+            "https://text.pollinations.ai/openai",
+            fetchOptions,
+          );
+          if (!res.ok) {
+            let errMsg = "";
+            try {
+              const errJson = await res.json();
+              errMsg =
+                errJson.error && errJson.error.message
+                  ? errJson.error.message
+                  : JSON.stringify(errJson);
+            } catch (e) {
+              errMsg = await res.text();
+            }
+            typingIndicator.style.display = "none";
+            appendErrorBubble(`HTTP ${res.status}: ${errMsg}`);
+            conversationHistory.pop();
+            return;
+          }
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let streamDone = false;
+          let botMsgEl = null;
+          let firstToken = true;
+          let accumulatedText = "";
+          let buffer = "";
+          while (!streamDone) {
+            const { value, done } = await reader.read();
+            if (done) {
+              streamDone = true;
+              break;
+            }
+            const chunkStr = decoder.decode(value, { stream: true });
+            logDebug("SSE chunk:", chunkStr);
+            buffer += chunkStr;
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+              if (line.trim() === "" || line.startsWith("event:")) continue;
+              if (line.startsWith("data:")) {
+                const dataStr = line.substring(5).trim();
+                if (dataStr === "[DONE]") {
+                  streamDone = true;
+                  continue;
+                }
+                let dataObj;
+                try {
+                  dataObj = JSON.parse(dataStr);
+                } catch (e) {
+                  continue;
+                }
+
+                if (dataObj.choices && dataObj.choices.length > 0) {
+                  const delta = dataObj.choices[0].delta;
+                  if (delta && delta.content) {
+                    if (firstToken) {
+                      typingIndicator.style.display = "none";
+                      botMsgEl = appendMessage("bot", "");
+                      firstToken = false;
+                    }
+                    accumulatedText += delta.content;
+                    botMsgEl.querySelector(".bubble").textContent =
+                      accumulatedText;
+                    chat.scrollTop = chat.scrollHeight;
+                  }
+                }
+              }
+            }
+          }
+          if (accumulatedText) {
+            conversationHistory.push({
+              role: "assistant",
+              content: accumulatedText,
+            });
+          }
+        } catch (err) {
+          typingIndicator.style.display = "none";
+          appendErrorBubble(`Network Error: ${err.message}`);
+          conversationHistory.pop();
+        } finally {
+          input.disabled = false;
+          clearBtn.disabled = false;
+          const len = input.value.length;
+          sendBtn.disabled = len === 0 || len > 2000;
+          input.focus();
+        }
+      }
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const v = input.value;
+        if (!v || v.length > 2000) return;
+        input.value = "";
+        charCounter.textContent = "0 / 2000";
+        sendToAI(v);
+      });
+      input.focus();
+    </script>
+  </body>
+</html>
