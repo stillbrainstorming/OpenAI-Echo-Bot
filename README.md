@@ -29,6 +29,9 @@ This project is a resilient single-file application requiring absolutely no buil
 * Open the file directly in any modern web browser.
 Once opened, you can begin chatting. Your messages will be sent to the AI endpoint, and you can monitor the low-level data exchanges by expanding the "Debug output" accordion at the bottom of the page.
 
+### Browser Compatibility
+The application is designed for modern browsers with support for the Fetch API, readable streams, `TextDecoder`, and Server-Sent Events-style streaming. For the best experience, use a current version of Chrome, Edge, Firefox, or Safari.
+
 ### Technologies Used
 * **HTML5:** Clean semantic layout.
 * **CSS3:** Native variables, Flexbox layouts, gradients, animations, and custom scrollbars.
