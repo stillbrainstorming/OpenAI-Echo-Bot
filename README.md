@@ -1,39 +1,56 @@
 # Open AI Chat (formerly Echo-Bot)
 
-A clean, modern, and zero-dependency single-page HTML chat client designed for interacting with AI models, featuring real-time response streaming and persistent conversation history.
+A zero-dependency, browser-first chat client for Pollinations AI models with streamed responses, conversation persistence, cancellation, validation, and lightweight browser verification.
 
-### Features
-* **Responsive UI:** A sharp, modern dark theme that adapts perfectly to desktop and mobile devices.
-* **Real-time Streaming:** Uses Server-Sent Events (SSE) to display AI responses as they are generated, providing a rapid and dynamic chat experience.
-* **Legacy Mode:** A dedicated version of the original "Echo Bot" is available for testing basic API connectivity.
-* **Conversation Memory:** Keeps track of the active chat history to maintain conversational context with the AI across multiple messages.
-* **System Prompt:** A collapsible section allows you to provide a system prompt to define the AI's behavior, persona, or rules.
-* **Free & Keyless Access:** Securely connects to a free, CORS-enabled public endpoint (`https://text.pollinations.ai/openai`), requiring no API keys, accounts, or backend servers.
-* **Debug Console:** An integrated, collapsible console logs request payloads and Server-Sent Event chunks in real-time.
-* **Context Management:** A dedicated "Clear" button resets the conversation history and clears the chat interface instantly.
-* **Input Validation:** A real-time character counter tracks input length up to a maximum limit.
+## Features
 
-### How It Works
-The client leverages the native JavaScript `fetch` API to make a `POST` request to the AI endpoint. It constructs a standard conversational payload containing a `messages` array, which includes the optional system prompt and all previous user/bot interactions. 
+- Responsive dark UI for desktop and mobile
+- Streaming responses from the Pollinations chat completions endpoint
+- Conversation context with browser persistence
+- New chat and clear conversation controls
+- Stop/cancel for active responses
+- Session-only API-key handling
+- Configurable model and system prompt
+- Input validation with a 2,000-character limit
+- Graceful handling for authentication, rate-limit, network, empty, and malformed-stream failures
+- Accessible status, chat-log, settings, and keyboard interactions
+- Reduced-motion support
+- Debug output that records request lifecycle information without logging API keys or message payloads
+- `/legacy` preserved as the historical mock implementation
 
-Crucially, the request asks the server to stream the response back (`stream: true`). The application reads the incoming byte stream using `res.body.getReader()` and decodes it using a `TextDecoder`. It then loops over the data chunks, manually parsing the `data:` prefixes typical of Server-Sent Events to extract the incremental text tokens (`delta.content`) and instantly updates the DOM UI character-by-character.
+## Usage
 
-### Legacy Echo Bot (Mock API)
-The original implementation of this project is preserved in the `/legacy` directory. It serves as a simple demonstration of frontend-to-backend communication:
-* **JSONPlaceholder Integration:** It sends `POST` requests to `https://jsonplaceholder.typicode.com/posts`.
-* **Mock Echoing:** Since the JSONPlaceholder API echoes back the data sent to it in the response body, this legacy bot effectively "echoes" user input to verify that network requests are functioning correctly without needing a real AI backend.
+1. Open `index.html` in a modern browser or serve the repository with any static web server.
+2. Open **Connection & prompt** and enter a Pollinations API key.
+3. Select a supported model and optionally provide a system prompt.
+4. Start chatting.
 
-### Usage
-This project is a resilient single-file application requiring absolutely no build steps, backend setup, or NPM packages.
-* Save the code as a file with an `.html` extension (e.g., `index.html`).
-* Open the file directly in any modern web browser.
-Once opened, you can begin chatting. Your messages will be sent to the AI endpoint, and you can monitor the low-level data exchanges by expanding the "Debug output" accordion at the bottom of the page.
+No build step, package manager, backend, or GitHub Actions workflow is required.
 
-### Browser Compatibility
-The application is designed for modern browsers with support for the Fetch API, readable streams, `TextDecoder`, and Server-Sent Events-style streaming. For the best experience, use a current version of Chrome, Edge, Firefox, or Safari.
+## Configuration and security
 
-### Technologies Used
-* **HTML5:** Clean semantic layout.
-* **CSS3:** Native variables, Flexbox layouts, gradients, animations, and custom scrollbars.
-* **JavaScript (ES6+):** Asynchronous functions, Fetch API, TextDecoder, readable streams, and DOM manipulation.
-* **Font Awesome:** Lightweight scalable vector icons via CDN.
+The current client sends requests directly from the browser to `https://gen.pollinations.ai/v1/chat/completions`. The API key is retained only in `sessionStorage` for the current browser session and is never written to conversation history or debug output.
+
+Browser-side API keys are still exposed to the page and the browser environment. Do not use this client as a secure secret-management boundary or deploy it where untrusted scripts can access the same origin. For stronger secret protection, use a server-side proxy instead.
+
+Conversation history and the system prompt are stored in `localStorage` so they can be restored after refresh. Use **Clear** or **New chat** to remove the saved conversation.
+
+## Streaming behavior
+
+The client uses the Fetch API, readable streams, and `TextDecoder` to process Server-Sent Events-style `data:` records. Partial chunks are buffered until complete lines are available. Malformed events are ignored rather than crashing the chat, terminal `[DONE]` events end the stream, and network/API failures return the interface to an interactive state.
+
+## Browser verification
+
+Open `tests.html` directly to run the lightweight browser checks for stream parsing, validation, error formatting, and conversation sanitization. The tests require no dependencies or build tooling.
+
+## Legacy Echo Bot
+
+The original mock implementation remains under `/legacy`. It uses JSONPlaceholder to demonstrate basic frontend-to-backend request handling without requiring an AI service.
+
+## Browser compatibility
+
+Use a current Chrome, Edge, Firefox, or Safari release with support for Fetch, readable streams, `TextDecoder`, `AbortController`, `localStorage`, and `sessionStorage`.
+
+## Deployment
+
+The application is designed for manual static deployment. Upload `index.html`, `app.js`, and the repository files to the chosen static host. No CI/CD or GitHub Actions configuration is included.
