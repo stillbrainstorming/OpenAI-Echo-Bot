@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Open AI Chat browser tests</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;background:#111;color:#eee}li{margin:8px 0}.pass{color:#9f9}.fail{color:#f99}</style>
+  </head>
+  <body>
+    <h1>Open AI Chat tests</h1>
+    <p id="summary">Running…</p>
+    <ul id="results"></ul>
+    <section id="settings"><button id="settings-toggle"></button><div id="settings-content"></div></section>
+    <section id="chat"><div id="welcome"></div><div id="typing"></div></section>
+    <form id="form"><textarea id="input"></textarea><input id="api-key"><input id="model"><textarea id="system-prompt"></textarea><button id="send-btn"></button><button id="stop-btn"></button><button id="clear-btn"></button><button id="new-chat-btn"></button><span id="char-counter"></span></form>
+    <div id="debug-container"><button id="debug-toggle"></button><span id="debug-arrow"></span><div id="debug-content"><pre id="debug">Ready.</pre></div></div>
+    <div id="status"><span id="status-text"></span></div>
+    <script src="app.js"></script>
+    <script>
+      const results = document.getElementById("results");
+      const tests = [];
+      function test(name, fn) { try { fn(); tests.push({ name, passed: true }); } catch (error) { tests.push({ name, passed: false, error: error.message }); } }
+      function equal(actual, expected) { if (actual !== expected) throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`); }
+      function truthy(value) { if (!value) throw new Error("Expected a truthy value"); }
+      test("parses a streamed content event", () => { equal(window.__openAIChat.parseSseLine('data: {"choices":[{"delta":{"content":"hello"}}]}').content, "hello"); });
+      test("recognizes stream completion", () => { equal(window.__openAIChat.parseSseLine("data: [DONE]").done, true); });
+      test("ignores malformed stream JSON", () => { equal(window.__openAIChat.parseSseLine("data: not-json").invalid, true); });
+      test("rejects empty messages", () => { equal(window.__openAIChat.validateMessage("   ").valid, false); });
+      test("trims valid messages", () => { equal(window.__openAIChat.validateMessage("  hello  ").message, "hello"); });
+      test("rejects oversized messages", () => { equal(window.__openAIChat.validateMessage("x".repeat(2001)).valid, false); });
+      test("sanitizes conversation roles and content", () => { const value = window.__openAIChat.sanitizeHistory([{role:"user",content:"hello"},{role:"system",content:"no"},{role:"assistant",content:"world"}]); equal(value.length, 2); equal(value[0].role, "user"); });
+      test("formats authentication errors", () => { truthy(window.__openAIChat.parseErrorMessage(401, "bad key").includes("Authentication failed")); });
+      const passed = tests.filter((result) => result.passed).length;
+      results.innerHTML = tests.map((result) => `<li class="${result.passed ? "pass" : "fail"}">${result.passed ? "PASS" : "FAIL"}: ${result.name}${result.error ? ` — ${result.error}` : ""}</li>`).join("");
+      document.getElementById("summary").textContent = `${passed}/${tests.length} tests passed`;
+    </script>
+  </body>
+</html>
