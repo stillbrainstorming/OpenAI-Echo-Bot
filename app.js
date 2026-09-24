@@ -3,6 +3,8 @@ const MAX_INPUT_LENGTH = 2000;
 const CONVERSATION_KEY = "open-ai-chat-conversation";
 const SYSTEM_PROMPT_KEY = "open-ai-chat-system-prompt";
 const API_KEY_KEY = "open-ai-chat-api-key";
+const MAX_IMPORTED_MESSAGES = 500;
+const MAX_IMPORTED_FILE_SIZE = 250000;
 
 function safeParseJson(value, fallback = null) {
   try { return JSON.parse(value); } catch { return fallback; }
@@ -133,6 +135,74 @@ function resetConversation() {
   if (requestInProgress) return;
   if (conversationHistory.length && !window.confirm("Start a new conversation and clear the current chat?")) return;
   clearConversation();
+}
+
+function downloadJson(filename, value) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportConversation() {
+  const messages = sanitizeHistory(conversationHistory);
+  if (!messages.length) {
+    appendMessage("error", "There is no conversation to export.");
+    return;
+  }
+  downloadJson("open-ai-chat-conversation.json", {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    messages
+  });
+  logDebug(`Exported ${messages.length} conversation messages.`);
+}
+
+async function importConversation(file) {
+  if (!file) return;
+  if (file.size > MAX_IMPORTED_FILE_SIZE) {
+    appendMessage("error", "Import file is too large.");
+    return;
+  }
+  try {
+    const parsed = safeParseJson(await file.text());
+    const messages = Array.isArray(parsed) ? parsed : parsed?.messages;
+    if (!Array.isArray(messages) || !messages.length || messages.length > MAX_IMPORTED_MESSAGES) {
+      throw new Error("Import must contain between 1 and 500 messages.");
+    }
+    const sanitized = sanitizeHistory(messages);
+    if (sanitized.length !== messages.length) {
+      throw new Error("Import contains unsupported or malformed messages.");
+    }
+    conversationHistory = sanitized;
+    saveConversation(conversationHistory);
+    renderHistory();
+    logDebug(`Imported ${conversationHistory.length} conversation messages.`);
+    input.focus();
+  } catch (error) {
+    appendMessage("error", `Import failed: ${error instanceof Error ? error.message : "Invalid JSON file."}`);
+  }
+}
+
+function clearLocalData() {
+  if (requestInProgress) return;
+  if (!window.confirm("Clear the saved conversation and system prompt from this browser?")) return;
+  conversationHistory = [];
+  try {
+    localStorage.removeItem(CONVERSATION_KEY);
+    localStorage.removeItem(SYSTEM_PROMPT_KEY);
+  } catch {
+    setStatus("error", "Storage unavailable");
+  }
+  systemPrompt.value = "";
+  renderHistory();
+  logDebug("Saved conversation and system prompt cleared.");
+  input.focus();
 }
 
 async function readErrorResponse(response) {
@@ -284,7 +354,7 @@ let conversationHistory = loadConversation();
 let requestInProgress = false;
 let activeController = null;
 
-window.__openAIChat = { parseSseLine, parseErrorMessage, sanitizeHistory, validateMessage };
+window.__openAIChat = { parseSseLine, parseErrorMessage, sanitizeHistory, validateMessage, exportConversation, importConversation, clearLocalData };
 
 settingsToggle.addEventListener("click", () => {
   const open = settings.classList.toggle("open");
@@ -313,6 +383,34 @@ modelInput.addEventListener("input", updateComposerState);
 clearBtn.addEventListener("click", clearConversation);
 newChatBtn.addEventListener("click", resetConversation);
 stopBtn.addEventListener("click", stopResponse);
+
+const exportBtn = document.createElement("button");
+exportBtn.type = "button";
+exportBtn.className = "button";
+exportBtn.textContent = "Export";
+exportBtn.addEventListener("click", exportConversation);
+
+const importBtn = document.createElement("button");
+importBtn.type = "button";
+importBtn.className = "button";
+importBtn.textContent = "Import";
+const importInput = document.createElement("input");
+importInput.type = "file";
+importInput.accept = "application/json,.json";
+importInput.hidden = true;
+importInput.addEventListener("change", async () => {
+  await importConversation(importInput.files?.[0]);
+  importInput.value = "";
+});
+importBtn.addEventListener("click", () => importInput.click());
+
+const clearDataBtn = document.createElement("button");
+clearDataBtn.type = "button";
+clearDataBtn.className = "button";
+clearDataBtn.textContent = "Clear data";
+clearDataBtn.addEventListener("click", clearLocalData);
+
+document.querySelector(".toolbar")?.append(exportBtn, importBtn, clearDataBtn, importInput);
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
