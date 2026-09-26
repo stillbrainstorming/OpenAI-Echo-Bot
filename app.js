@@ -5,6 +5,8 @@ const SYSTEM_PROMPT_KEY = "open-ai-chat-system-prompt";
 const API_KEY_KEY = "open-ai-chat-api-key";
 const MAX_IMPORTED_MESSAGES = 500;
 const MAX_IMPORTED_FILE_SIZE = 250000;
+const MAX_MODEL_LENGTH = 120;
+const MAX_ERROR_MESSAGE_LENGTH = 800;
 
 function safeParseJson(value, fallback = null) {
   try { return JSON.parse(value); } catch { return fallback; }
@@ -40,18 +42,33 @@ function parseSseLine(line) {
   return typeof content === "string" ? { content } : null;
 }
 
-function parseErrorMessage(statusCode, body) {
+function sanitizeDiagnosticText(value, secret = "") {
+  let text = String(value || "Unknown API error.").trim();
+  if (secret) text = text.split(secret).join("[REDACTED]");
+  text = text.replace(/Bearer\\s+[^\\s,;]+/gi, "Bearer [REDACTED]");
+  return text.length > MAX_ERROR_MESSAGE_LENGTH ? `${text.slice(0, MAX_ERROR_MESSAGE_LENGTH)}…` : text;
+}
+
+function parseErrorMessage(statusCode, body, secret = "") {
   const parsed = safeParseJson(body);
   let message = body;
   if (typeof parsed === "string") message = parsed;
   else if (parsed?.error) message = typeof parsed.error === "string" ? parsed.error : parsed.error.message || JSON.stringify(parsed.error);
   else if (parsed?.message) message = parsed.message;
-  message = String(message || "Unknown API error.").trim();
+  message = sanitizeDiagnosticText(message, secret);
   if (statusCode === 401) return `Authentication failed. Check your Pollinations API key.\n\n${message}`;
   if (statusCode === 402) return `Pollinations rejected the request because payment or available Pollen is required.\n\n${message}`;
   if (statusCode === 403) return `The API key is not permitted to make this request.\n\n${message}`;
   if (statusCode === 429) return `Rate limit reached. Please wait and try again.\n\n${message}`;
   return `HTTP ${statusCode}: ${message}`;
+}
+
+function validateModel(value) {
+  const model = String(value || "").trim();
+  if (!model) return { valid: false, message: "Model is required." };
+  if (model.length > MAX_MODEL_LENGTH) return { valid: false, message: `Model must be ${MAX_MODEL_LENGTH} characters or fewer.` };
+  if (/[\\u0000-\\u001F\\u007F]/.test(model)) return { valid: false, message: "Model contains unsupported control characters." };
+  return { valid: true, model };
 }
 
 function setStatus(type, text) {
@@ -211,12 +228,19 @@ async function readErrorResponse(response) {
 
 async function sendToAI(message) {
   const apiKey = apiKeyInput.value.trim();
-  const model = modelInput.value.trim() || "openai";
+  const modelValidation = validateModel(modelInput.value);
+  const model = modelValidation.model;
   const systemValue = systemPrompt.value.trim();
   if (!apiKey) {
     appendMessage("error", "Enter your Pollinations API key before sending a message.");
     settings.classList.add("open");
     input.focus();
+    return;
+  }
+  if (!modelValidation.valid) {
+    appendMessage("error", modelValidation.message);
+    settings.classList.add("open");
+    modelInput.focus();
     return;
   }
   if (!message || message.length > MAX_INPUT_LENGTH) return;
@@ -239,7 +263,7 @@ async function sendToAI(message) {
     logDebug(`Messages: ${messages.length}`);
     const response = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages, stream: true }), signal: activeController.signal });
     if (!response.ok) {
-      const errorMessage = parseErrorMessage(response.status, await readErrorResponse(response));
+      const errorMessage = parseErrorMessage(response.status, await readErrorResponse(response), apiKey);
       logDebug(`API error: ${response.status}`);
       appendMessage("error", errorMessage);
       conversationHistory.pop();
@@ -303,7 +327,7 @@ async function sendToAI(message) {
         if (content && accumulatedText) content.textContent = `${accumulatedText}\n\n[Stopped]`;
       } else appendMessage("error", "Response stopped.");
     } else {
-      const messageText = error instanceof Error ? error.message : String(error);
+      const messageText = sanitizeDiagnosticText(error instanceof Error ? error.message : String(error), apiKey);
       logDebug(`Request failed: ${messageText}`);
       appendMessage("error", `Request failed: ${messageText}`);
       if (conversationHistory.at(-1)?.role === "user") conversationHistory.pop();
@@ -354,7 +378,7 @@ let conversationHistory = loadConversation();
 let requestInProgress = false;
 let activeController = null;
 
-window.__openAIChat = { parseSseLine, parseErrorMessage, sanitizeHistory, validateMessage, exportConversation, importConversation, clearLocalData };
+window.__openAIChat = { parseSseLine, parseErrorMessage, sanitizeHistory, validateMessage, validateModel, sanitizeDiagnosticText, exportConversation, importConversation, clearLocalData };
 
 settingsToggle.addEventListener("click", () => {
   const open = settings.classList.toggle("open");

@@ -54,3 +54,10 @@ Use a current Chrome, Edge, Firefox, or Safari release with support for Fetch, r
 ## Deployment
 
 The application is designed for manual static deployment. Upload `index.html`, `app.js`, and the repository files to the chosen static host. No CI/CD or GitHub Actions configuration is included.
+
+
+## API-key security
+
+The Pollinations API key is entered in the browser and stored in `sessionStorage` for the current browser session. It is not stored in exported conversations, local conversation history, or the debug console. This is browser-side convenience storage, not a secure secret store: any JavaScript running in the same origin can access the session storage, so the application should not be treated as a secure secret-management boundary. The key is sent only as the HTTP `Authorization: Bearer` credential for API requests.
+
+Model input is validated before dispatch, and API error/diagnostic text is bounded and redacted so an echoed authorization credential is not rendered back to the user.
